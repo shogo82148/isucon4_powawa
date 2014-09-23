@@ -1,0 +1,12 @@
+---
+- hosts: isucon4
+  remote_user: ec2-user
+  tasks:
+    - name: dowanload shogo's pubkey
+      authorized_key: user=ec2-user key="{{ lookup('pipe', 'curl -s https://github.com/shogo82148.keys') }}"
+
+    - name: dowanload mackee's pubkey
+      authorized_key: user=ec2-user key="{{ lookup('pipe', 'curl -s https://github.com/mackee.keys') }}"
+
+    - name: dowanload chrone's pubkey
+      authorized_key: user=ec2-user key="{{ lookup('pipe', 'curl -s https://github.com/chrone.keys') }}"
