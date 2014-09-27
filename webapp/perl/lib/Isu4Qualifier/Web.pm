@@ -262,4 +262,56 @@ get '/report' => sub {
   });
 };
 
+
+sub failed_count_banned_ips {
+  my ($self) = @_;
+  my %ips;
+
+  my $not_succeeded = $self->db->select_all('SELECT ip, cnt FROM (SELECT ip, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY ip) AS t0 WHERE t0.max_succeeded = 0');
+
+  foreach my $row (@$not_succeeded) {
+      $ips{ "ipfail:$row->{ip}" } = $row->{cnt};
+  }
+
+  my $last_succeeds = $self->db->select_all('SELECT ip, MAX(id) AS last_login_id FROM login_log WHERE succeeded = 1 GROUP by ip');
+
+  foreach my $row (@$last_succeeds) {
+    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE ip = ? AND ? < id', $row->{ip}, $row->{last_login_id});
+    $ips{ "ipfail:$row->{ip}" } = $count;
+  }
+
+  \%ips;
+};
+
+sub failed_count_locked_users {
+  my ($self) = @_;
+  my %user_ids;
+
+  my $not_succeeded = $self->db->select_all('SELECT user_id, cnt FROM (SELECT user_id, login, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY user_id) AS t0 WHERE t0.user_id IS NOT NULL AND t0.max_succeeded = 0');
+
+  foreach my $row (@$not_succeeded) {
+    $user_ids{ "userfail:$row->{user_id}" } = $row->{cnt};
+  }
+
+  my $last_succeeds = $self->db->select_all('SELECT user_id, login, MAX(id) AS last_login_id FROM login_log WHERE user_id IS NOT NULL AND succeeded = 1 GROUP BY user_id');
+
+  foreach my $row (@$last_succeeds) {
+    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE user_id = ? AND ? < id', $row->{user_id}, $row->{last_login_id});
+    $user_ids{ "userfail:$row->{user_id}" } = $count;
+  }
+
+  \%user_ids;
+};
+
+
+get '/init' => sub {
+  my ($self, $c) = @_;
+  $self->redis->flushdb;
+
+  $self->redis->mset(%{ $self->failed_count_banned_ips });
+  $self->redis->mset(%{ $self->failed_count_locked_users });
+
+  $c->render_json({ result => "ok" });
+};
+
 1;
