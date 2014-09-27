@@ -53,7 +53,7 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $failures = $self->redis->del("userfail:$user->{'id'}");
+  my $failures = $self->redis->del("userfail:$user->{'id'}") || 0;
   $self->config->{user_lock_threshold} <= $failures;
 };
 
