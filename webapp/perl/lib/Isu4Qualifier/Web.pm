@@ -66,7 +66,8 @@ sub ip_banned {
   my $log = $self->db->select_row(
     'SELECT COUNT(1) AS failures FROM login_log WHERE ip = ? AND id > IFNULL((select id from login_log where ip = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
     $ip, $ip);
-
+  my $failures = $self->redis->get("ipfail:$user->{'id'}") || 0;
+  warn "$log->{failures} != $failures" if $log->{failures} != $failures;
   $self->config->{ip_ban_threshold} <= $log->{failures};
 };
 
