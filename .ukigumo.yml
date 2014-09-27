@@ -1,0 +1,2 @@
+install: ./deploy.sh
+script: ssh isucon4 -- ./bench.sh
