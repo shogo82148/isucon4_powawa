@@ -7,6 +7,7 @@ use Kossy;
 use DBIx::Sunny;
 use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
+use Redis::Fast;
 
 sub config {
   my ($self) = @_;
@@ -35,6 +36,14 @@ sub db {
       },
     );
   };
+}
+
+sub redis {
+    my ($self) = @_;
+    $self->{_redis} ||= Redis::Fast->new(
+        reconnect => 1,
+        every     => 100_000,
+    );
 }
 
 sub calculate_password_hash {
