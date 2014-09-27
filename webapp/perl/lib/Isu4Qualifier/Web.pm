@@ -44,41 +44,47 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $log = $self->db->select_row( 'SELECT failures FROM failed_users WHERE user_id = ?', $user->{'id'} );
-  $self->config->{user_lock_threshold} <= ($log->{failures} // 0);
+  my $log = $self->db->select_row( 'SELECT user_id FROM locked_users WHERE user_id = ?', $user->{'id'} );
+  defined $log->{user_id};
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
-  my $log = $self->db->select_row( 'SELECT failures FROM failed_ips WHERE ip = ?', $ip );
-  $self->config->{ip_ban_threshold} <= ($log->{failures} // 0);
+  my $log = $self->db->select_row( 'SELECT ip FROM banned_ips WHERE ip = ?', $ip );
+  defined $log->{ip};
 };
 
 sub attempt_login {
   my ($self, $login, $password, $ip) = @_;
 
-  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ? FOR UPDATE', $login);
+  my $txn = $self->db->txn_scope;
+  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ?', $login);
 
   if ($self->ip_banned($ip)) {
     $self->login_log(0, $login, $ip, $user ? $user->{id} : undef);
+    $txn->commit;
     return undef, 'banned';
   }
 
   if ($self->user_locked($user)) {
     $self->login_log(0, $login, $ip, $user->{id});
+    $txn->commit;
     return undef, 'locked';
   }
 
   if ($user && calculate_password_hash($password, $user->{salt}) eq $user->{password_hash}) {
     $self->login_log(1, $login, $ip, $user->{id});
+    $txn->commit;
     return $user, undef;
   }
   elsif ($user) {
     $self->login_log(0, $login, $ip, $user->{id});
+    $txn->commit;
     return undef, 'wrong_password';
   }
   else {
     $self->login_log(0, $login, $ip);
+    $txn->commit;
     return undef, 'wrong_login';
   }
 };
