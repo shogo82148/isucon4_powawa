@@ -1,0 +1,52 @@
+---
+- hosts: isucon4
+  remote_user: ec2-user
+  tasks:
+    - name: put files
+      synchronize: src=../webapp dest=/home/isucon/webapp recursive=yes owner=yes
+      sudo: yes
+
+    - name: change to owner
+      file: path=/home/isucon/webapp owner=isucon group=isucon recurse=yes
+      sudo: yes
+
+    - name: carton install
+      command: /home/isucon/env.sh carton install
+      args:
+        chdir: /home/isucon/webapp/perl
+      sudo: yes
+
+    - name: copy supervisord.conf
+      copy: src=../supervisord.conf dest=/etc/supervisord.conf owner=root group=root mode=0644
+      sudo: yes
+
+    - name: restart supervisord
+      service: name=supervisord state=reloaded enabled=yes
+      sudo: yes
+
+    - name: restart isucon_ruby
+      supervisorctl: name=isucon_ruby state=stopped
+      sudo: yes
+
+    - name: restart isucon_perl
+      supervisorctl: name=isucon_perl state=started
+      sudo: yes
+
+    # - name: copy nginx.conf
+    #   copy: src=nginx.conf dest=/etc/nginx/nginx.conf owner=root group=root mode=0644
+    #   sudo: yes
+
+    - name: start nginx
+      service: name=nginx state=started enabled=yes
+      sudo: yes
+
+    - name: reload nginx
+      service: name=nginx state=reloaded enabled=yes
+      sudo: yes
+
+    - name: install tools
+      yum: name={{ item }} state=installed
+      sudo: yes
+      with_items:
+        - htop
+        - dstat
