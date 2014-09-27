@@ -4,7 +4,7 @@
   sudo: yes
   tasks:
     - name: put files
-      synchronize: src=../webapp dest=/home/isucon/webapp recursive=yes owner=yes
+      synchronize: src=../webapp dest=/home/isucon recursive=yes owner=yes
 
     - name: put files
       copy: src=../bench.sh dest=/home/isucon/
