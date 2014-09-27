@@ -9,6 +9,8 @@ use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
 use Redis::Fast;
 
+our $NO_WAIT = sub {};
+
 sub config {
   my ($self) = @_;
   $self->{_config} ||= {
@@ -167,13 +169,15 @@ sub login_log {
     'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
     $user_id, $login, $ip, ($succeeded ? 1 : 0)
   );
+
   if($succeeded) {
-      $self->redis->del("userfail:$user_id");
-      $self->redis->del("ipfail:$ip");
+      $self->redis->del("userfail:$user_id", $NO_WAIT);
+      $self->redis->del("ipfail:$ip", $NO_WAIT);
   } else {
-      $self->redis->incr("userfail:$user_id");
-      $self->redis->incr("ipfail:$ip");
+      $self->redis->incr("userfail:$user_id", $NO_WAIT);
+      $self->redis->incr("ipfail:$ip", $NO_WAIT);
   }
+  $self->redis->wait_all_responses;
 };
 
 sub set_flash {
