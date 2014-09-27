@@ -249,4 +249,47 @@ get '/report' => sub {
   });
 };
 
+get '/init' => sub {
+  my ($self, $c) = @_;
+
+  {
+    my @ips;
+    my $threshold = $self->config->{ip_ban_threshold};
+  
+    my $not_succeeded = $self->db->select_all('SELECT ip FROM (SELECT ip, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY ip) AS t0 WHERE t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
+  
+    foreach my $row (@$not_succeeded) {
+      $self->db->query( 'insert ignore into banned_ips(ip) values (?)', $row->{ip} );
+    }
+  
+    my $last_succeeds = $self->db->select_all('SELECT ip, MAX(id) AS last_login_id FROM login_log WHERE succeeded = 1 GROUP by ip');
+  
+    foreach my $row (@$last_succeeds) {
+      my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE ip = ? AND ? < id', $row->{ip}, $row->{last_login_id});
+      if ($threshold <= $count) {
+       $self->db->query( 'insert ignore into banned_ips(ip) values (?)', $row->{ip} );
+      }
+    }
+  }
+  {
+    my @user_ids;
+    my $threshold = $self->config->{user_lock_threshold};
+  
+    my $not_succeeded = $self->db->select_all('SELECT user_id, login FROM (SELECT user_id, login, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY user_id) AS t0 WHERE t0.user_id IS NOT NULL AND t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
+  
+    foreach my $row (@$not_succeeded) {
+      $self->db->query( 'insert ignore into locked_users(user_id) values (?)', $row->{user_id} );
+    }
+  
+    my $last_succeeds = $self->db->select_all('SELECT user_id, login, MAX(id) AS last_login_id FROM login_log WHERE user_id IS NOT NULL AND succeeded = 1 GROUP BY user_id');
+  
+    foreach my $row (@$last_succeeds) {
+      my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE user_id = ? AND ? < id', $row->{user_id}, $row->{last_login_id});
+      if ($threshold <= $count) {
+        $self->db->query( 'insert ignore into locked_users(user_id) values (?)', $row->{user_id} );
+      }
+    }
+  }
+};
+
 1;
