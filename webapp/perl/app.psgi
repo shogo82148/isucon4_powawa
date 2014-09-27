@@ -5,7 +5,7 @@ use File::Basename;
 use Plack::Builder;
 use Isu4Qualifier::Web;
 use Plack::Session::State::Cookie;
-use Plack::Session::Store::File;
+use Plack::Session::Store::Redis;
 
 my $root_dir = File::Basename::dirname(__FILE__);
 my $session_dir = "/tmp/isu4_session_plack";
@@ -16,7 +16,7 @@ builder {
   enable 'AxsLog',
     ltsv => 1,
     response_time => 1;
-    
+
   enable 'ReverseProxy';
   enable 'Static',
     path => qr!^/(?:stylesheets|images)/!,
@@ -26,9 +26,11 @@ builder {
       httponly    => 1,
       session_key => "isu4_session",
     ),
-    store => Plack::Session::Store::File->new(
-      dir         => $session_dir,
-    ),
-    ;
+    store => Plack::Session::Store::Redis->new(
+      prefix => 'MyApp',
+      host => 'localhost',
+      port => 6379,
+      expires => 604800, # 1week
+    );
   $app;
 };

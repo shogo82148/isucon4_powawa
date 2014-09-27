@@ -56,7 +56,8 @@ sub ip_banned {
 
 sub attempt_login {
   my ($self, $login, $password, $ip) = @_;
-  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ?', $login);
+
+  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ? FOR UPDATE', $login);
 
   if ($self->ip_banned($ip)) {
     $self->login_log(0, $login, $ip, $user ? $user->{id} : undef);
