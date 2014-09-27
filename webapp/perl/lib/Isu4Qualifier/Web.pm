@@ -91,9 +91,17 @@ sub current_user {
 sub last_login {
   my ($self, $user_id) = @_;
 
-  my $logs = $self->db->select_all(
-   'SELECT * FROM login_log WHERE succeeded = 1 AND user_id = ? ORDER BY id DESC LIMIT 2',
-   $user_id);
+  my $logs = $self->db->select_all( <<'__EOT__', $user_id );
+SELECT a.created_at
+     , a.ip
+     , b.login
+  FROM success_log a
+  JOIN users       b ON a.user_id = b.id
+ WHERE a.user_id = ?
+ ORDER BY a.created_at DESC
+ LIMIT 1
+OFFSET 1
+__EOT__
 
   @$logs[-1];
 };
@@ -151,6 +159,7 @@ sub login_log {
     $user_id, $login, $ip, ($succeeded ? 1 : 0)
   );
   if ($succeeded) {
+      $self->db->query( 'insert into success_log(user_id, ip) values (?, ?)', $user_id, $ip);
       $self->db->query( 'update users set fail_count = 0 where id = ?', $user_id );
       $self->db->query( 'insert into ips(ip, fail_count) values (?, 0) on duplicate key update fail_count = 0', $ip );
   }
