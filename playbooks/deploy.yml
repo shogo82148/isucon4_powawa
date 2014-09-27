@@ -32,9 +32,9 @@
       supervisorctl: name=isucon_perl state=started
       sudo: yes
 
-    # - name: copy nginx.conf
-    #   copy: src=nginx.conf dest=/etc/nginx/nginx.conf owner=root group=root mode=0644
-    #   sudo: yes
+    - name: copy nginx.conf
+      copy: src=../nginx.conf dest=/etc/nginx/nginx.conf owner=root group=root mode=0644
+      sudo: yes
 
     - name: start nginx
       service: name=nginx state=started enabled=yes
