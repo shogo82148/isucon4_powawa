@@ -164,8 +164,10 @@ sub login_log {
   );
   if($succeeded) {
       $self->redis->del("userfail:$user_id");
+      $self->redis->del("ipfail:$ip");
   } else {
       $self->redis->incr("userfail:$user_id");
+      $self->redis->incr("ipfail:$ip");
   }
 };
 
