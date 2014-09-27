@@ -166,9 +166,9 @@ sub login_log {
     $user_id, $login, $ip, ($succeeded ? 1 : 0)
   );
   if($succeeded) {
-      $self->redis->incr("userfail:$user_id");
-  } else {
       $self->redis->del("userfail:$user_id");
+  } else {
+      $self->redis->incr("userfail:$user_id");
   }
 };
 
