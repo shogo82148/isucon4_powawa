@@ -56,3 +56,6 @@
       yum: pkg={{ item }} state=present enablerepo=remi,epel
       with_items:
         - redis
+
+    - name: start redis
+      service: name=redis state=started enabled=yes
