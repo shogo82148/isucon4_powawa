@@ -165,11 +165,6 @@ sub locked_users {
 
 sub login_log {
   my ($self, $succeeded, $login, $ip, $user_id) = @_;
-  $self->db->query(
-    'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
-    $user_id, $login, $ip, ($succeeded ? 1 : 0)
-  );
-
   if($succeeded) {
       $self->redis->del("userfail:$user_id", $NO_WAIT);
       $self->redis->del("ipfail:$ip", $NO_WAIT);
@@ -178,6 +173,11 @@ sub login_log {
       $self->redis->incr("ipfail:$ip", $NO_WAIT);
   }
   $self->redis->wait_all_responses;
+
+  $self->db->query(
+    'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
+    $user_id, $login, $ip, ($succeeded ? 1 : 0)
+  );
 };
 
 sub set_flash {
