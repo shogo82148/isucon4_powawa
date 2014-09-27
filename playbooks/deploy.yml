@@ -91,3 +91,9 @@
 
     - name: sysctl -p
       command: sysctl -p
+
+    - name: my.cnf
+      copy: src=../my.cnf dest=/etc/my.cnf owner=root group=root mode=0644
+
+    - name: restart mysqld
+      service: name=mysqld state=restarted enabled=yes

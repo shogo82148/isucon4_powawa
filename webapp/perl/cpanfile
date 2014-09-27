@@ -6,7 +6,8 @@ requires "File::Temp";
 requires "Time::Piece";
 
 requires "DBD::mysql";
-requires "Starlet";
+requires "Monoceros";
+requires "Server::Starter";
 requires "Plack::Session";
 requires "Plack::Session::Store::Redis";
 requires "Data::Dumper";

@@ -1,12 +1,13 @@
 package Isu4Qualifier::Web;
 
-use strict;
+use 5.16.1;
 use warnings;
 use utf8;
 use Kossy;
 use DBIx::Sunny;
 use Digest::SHA qw/ sha256_hex /;
 use Data::Dumper;
+use Redis::Fast;
 
 sub config {
   my ($self) = @_;
@@ -35,6 +36,10 @@ sub db {
       },
     );
   };
+}
+
+sub redis {
+  state $redis = Redis::Fast->new;
 }
 
 sub calculate_password_hash {
