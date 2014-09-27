@@ -44,13 +44,13 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $log = $self->db->select_row( 'SELECT fail_count failures FROM users WHERE id = ?', $user->{'id'} );
+  my $log = $self->db->select_row( 'SELECT failures FROM failed_users WHERE user_id = ?', $user->{'id'} );
   $self->config->{user_lock_threshold} <= ($log->{failures} // 0);
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
-  my $log = $self->db->select_row( 'SELECT fail_count failures FROM ips WHERE ip = ?', $ip );
+  my $log = $self->db->select_row( 'SELECT failures FROM failed_ips WHERE ip = ?', $ip );
   $self->config->{ip_ban_threshold} <= ($log->{failures} // 0);
 };
 
@@ -108,64 +108,86 @@ __EOT__
 
 sub banned_ips {
   my ($self) = @_;
-  my @ips;
-  my $threshold = $self->config->{ip_ban_threshold};
-
-  my $not_succeeded = $self->db->select_all('SELECT ip FROM (SELECT ip, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY ip) AS t0 WHERE t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
-
-  foreach my $row (@$not_succeeded) {
-    push @ips, $row->{ip};
-  }
-
-  my $last_succeeds = $self->db->select_all('SELECT ip, MAX(id) AS last_login_id FROM login_log WHERE succeeded = 1 GROUP by ip');
-
-  foreach my $row (@$last_succeeds) {
-    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE ip = ? AND ? < id', $row->{ip}, $row->{last_login_id});
-    if ($threshold <= $count) {
-      push @ips, $row->{ip};
-    }
-  }
-
+#  my @ips;
+#  my $threshold = $self->config->{ip_ban_threshold};
+#
+#  my $not_succeeded = $self->db->select_all('SELECT ip FROM (SELECT ip, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY ip) AS t0 WHERE t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
+#
+#  foreach my $row (@$not_succeeded) {
+#    push @ips, $row->{ip};
+#  }
+#
+#  my $last_succeeds = $self->db->select_all('SELECT ip, MAX(id) AS last_login_id FROM login_log WHERE succeeded = 1 GROUP by ip');
+#
+#  foreach my $row (@$last_succeeds) {
+#    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE ip = ? AND ? < id', $row->{ip}, $row->{last_login_id});
+#    if ($threshold <= $count) {
+#      push @ips, $row->{ip};
+#    }
+#  }
+#
+#  \@ips;
+#
+  my $_ips = $self->db->select_all( 'select ip from banned_ips' );
+  my @ips = map { $_->{ip} } @$_ips;
   \@ips;
 };
 
 sub locked_users {
   my ($self) = @_;
-  my @user_ids;
-  my $threshold = $self->config->{user_lock_threshold};
+#  my @user_ids;
+#  my $threshold = $self->config->{user_lock_threshold};
+#
+#  my $not_succeeded = $self->db->select_all('SELECT user_id, login FROM (SELECT user_id, login, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY user_id) AS t0 WHERE t0.user_id IS NOT NULL AND t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
+#
+#  foreach my $row (@$not_succeeded) {
+#    push @user_ids, $row->{login};
+#  }
+#
+#  my $last_succeeds = $self->db->select_all('SELECT user_id, login, MAX(id) AS last_login_id FROM login_log WHERE user_id IS NOT NULL AND succeeded = 1 GROUP BY user_id');
+#
+#  foreach my $row (@$last_succeeds) {
+#    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE user_id = ? AND ? < id', $row->{user_id}, $row->{last_login_id});
+#    if ($threshold <= $count) {
+#      push @user_ids, $row->{login};
+#    }
+#  }
+#
+#  \@user_ids;
 
-  my $not_succeeded = $self->db->select_all('SELECT user_id, login FROM (SELECT user_id, login, MAX(succeeded) as max_succeeded, COUNT(1) as cnt FROM login_log GROUP BY user_id) AS t0 WHERE t0.user_id IS NOT NULL AND t0.max_succeeded = 0 AND t0.cnt >= ?', $threshold);
-
-  foreach my $row (@$not_succeeded) {
-    push @user_ids, $row->{login};
-  }
-
-  my $last_succeeds = $self->db->select_all('SELECT user_id, login, MAX(id) AS last_login_id FROM login_log WHERE user_id IS NOT NULL AND succeeded = 1 GROUP BY user_id');
-
-  foreach my $row (@$last_succeeds) {
-    my $count = $self->db->select_one('SELECT COUNT(1) AS cnt FROM login_log WHERE user_id = ? AND ? < id', $row->{user_id}, $row->{last_login_id});
-    if ($threshold <= $count) {
-      push @user_ids, $row->{login};
-    }
-  }
-
+  my $_user_ids = $self->db->select_all( 'select user_id from locked_users' );
+  my @user_ids = map { $_->{user_id} } @$_user_ids;
   \@user_ids;
 };
 
 sub login_log {
   my ($self, $succeeded, $login, $ip, $user_id) = @_;
-  $self->db->query(
-    'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
-    $user_id, $login, $ip, ($succeeded ? 1 : 0)
-  );
+#  $self->db->query(
+#    'INSERT INTO login_log (`user_id`, `login`, `ip`, `succeeded`) VALUES (?,?,?,?)',
+#    $user_id, $login, $ip, ($succeeded ? 1 : 0)
+#  );
   if ($succeeded) {
       $self->db->query( 'insert into success_log(user_id, ip) values (?, ?)', $user_id, $ip);
-      $self->db->query( 'update users set fail_count = 0 where id = ?', $user_id );
-      $self->db->query( 'insert into ips(ip, fail_count) values (?, 0) on duplicate key update fail_count = 0', $ip );
+      $self->db->query( 'update failed_users set failures = 0 where user_id = ?', $user_id );
+      $self->db->query( 'update failed_ips set failures = 0 where ip = ?', $ip );
   }
   else {
-      $self->db->query( 'update users set fail_count = fail_count + 1 where id = ?', $user_id );
-      $self->db->query( 'insert into ips(ip, fail_count) values (?, 1) on duplicate key update fail_count = fail_count + 1', $ip );
+      $self->db->query(
+          'insert into failed_users(user_id, failures) values (?, 1)'.
+          'on duplicate key update failures = failures + 1',
+          $user_id );
+      $self->db->query(
+          'insert into failed_ips(ip, failures) values (?, 1)'.
+          'on duplicate key update failures = failures + 1',
+          $ip );
+      my $ips = $self->db->select_row( 'SELECT failures FROM failed_ips WHERE ip = ?', $ip );
+      if ($self->config->{ip_ban_threshold} <= ($ips->{failures} // 0)) {
+          $self->db->query( 'insert ignore into banned_ips(ip) values (?)', $ip );
+      }
+      my $users = $self->db->select_row( 'SELECT failures FROM failed_users WHERE user_id = ?', $user_id );
+      if ($self->config->{user_lock_threshold} <= ($users->{failures} // 0)) {
+          $self->db->query( 'insert ignore into locked_users(user_id) values (?)', $user_id );
+      }
   }
 };
 
