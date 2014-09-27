@@ -7,6 +7,12 @@
       synchronize: src=../webapp dest=/home/isucon recursive=yes owner=yes
 
     - name: put files
+      synchronize: src=../sql dest=/home/isucon recursive=yes owner=yes
+
+    - name: put files
+      copy: src=../bench.sh dest=/home/isucon/
+
+    - name: put files
       copy: src=../bench.sh dest=/home/isucon/
 
     - name: put files
@@ -14,6 +20,9 @@
 
     - name: change to owner
       file: path=/home/isucon/webapp owner=isucon group=isucon recurse=yes
+
+    - name: change to owner
+      file: path=/home/isucon/sql owner=isucon group=isucon recurse=yes
 
     - name: change to owner
       file: path=/home/isucon/bench.sh owner=isucon group=isucon
@@ -37,6 +46,14 @@
 
     - name: restart isucon_perl
       supervisorctl: name=isucon_perl state=restarted
+
+    - name: cache directory
+      file: path=/var/cache/nginx/cache state=directory
+      sudo: yes
+
+    - name: cache directory
+      file: path=/var/cache/nginx/tmp state=directory
+      sudo: yes
 
     - name: copy nginx.conf
       copy: src=../nginx.conf dest=/etc/nginx/nginx.conf owner=root group=root mode=0644
@@ -65,3 +82,6 @@
 
     - name: start redis
       service: name=redis state=started enabled=yes
+
+    - name: ulimit
+      copy: src=../limits.conf dest=/etc/security/limits.conf owner=root group=root mode=0644
