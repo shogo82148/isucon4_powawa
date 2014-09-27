@@ -165,6 +165,11 @@ sub login_log {
     'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
     $user_id, $login, $ip, ($succeeded ? 1 : 0)
   );
+  if($succeeded) {
+      $self->redis->incr("userfail:$user_id");
+  } else {
+      $self->redis->del("userfail:$user_id");
+  }
 };
 
 sub set_flash {
