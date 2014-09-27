@@ -13,10 +13,6 @@ mkdir $session_dir;
 
 my $app = Isu4Qualifier::Web->psgi($root_dir);
 builder {
-  enable 'AxsLog',
-    ltsv => 1,
-    response_time => 1;
-
   enable 'ReverseProxy';
   enable 'Static',
     path => qr!^/(?:stylesheets|images)/!,
