@@ -53,22 +53,22 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $log = $self->db->select_row(
-      'SELECT COUNT(1) AS failures FROM login_log WHERE user_id = ? AND id > IFNULL((select id from login_log where user_id = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-      $user->{'id'}, $user->{'id'});
+  # my $log = $self->db->select_row(
+  #     'SELECT COUNT(1) AS failures FROM login_log WHERE user_id = ? AND id > IFNULL((select id from login_log where user_id = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
+  #     $user->{'id'}, $user->{'id'});
   my $failures = $self->redis->get("userfail:$user->{'id'}") || 0;
-  warn "$log->{failures} != $failures" if $log->{failures} != $failures;
-  $self->config->{user_lock_threshold} <= $log->{failures};
+  # warn "$log->{failures} != $failures" if $log->{failures} != $failures;
+  $self->config->{user_lock_threshold} <= $failures;
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
-  my $log = $self->db->select_row(
-    'SELECT COUNT(1) AS failures FROM login_log WHERE ip = ? AND id > IFNULL((select id from login_log where ip = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-    $ip, $ip);
+  # my $log = $self->db->select_row(
+  #  'SELECT COUNT(1) AS failures FROM login_log WHERE ip = ? AND id > IFNULL((select id from login_log where ip = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
+  #  $ip, $ip);
   my $failures = $self->redis->get("ipfail:$ip") || 0;
-  warn "$log->{failures} != $failures" if $log->{failures} != $failures;
-  $self->config->{ip_ban_threshold} <= $log->{failures};
+  # warn "$log->{failures} != $failures" if $log->{failures} != $failures;
+  $self->config->{ip_ban_threshold} <= $failures;
 };
 
 sub attempt_login {
