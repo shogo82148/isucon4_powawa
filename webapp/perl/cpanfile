@@ -12,3 +12,4 @@ requires "Plack::Session";
 requires "Plack::Session::Store::Redis";
 requires "Data::Dumper";
 requires "Plack::Middleware::AxsLog"
+requires "Redis::Fast";
