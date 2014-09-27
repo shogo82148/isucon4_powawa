@@ -75,7 +75,7 @@ sub ip_banned {
 
 sub attempt_login {
   my ($self, $login, $password, $ip) = @_;
-  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ?', $login);
+  my $user = $self->db->select_row('SELECT * FROM users WHERE login = ? FOR UPDATE', $login);
 
   if ($self->ip_banned($ip)) {
     $self->login_log(0, $login, $ip, $user ? $user->{id} : undef);
@@ -213,11 +213,13 @@ post '/login' => sub {
   my ($self, $c) = @_;
   my $msg;
 
+  my $txn = $self->db->txn_scope;
   my ($user, $err) = $self->attempt_login(
     $c->req->param('login'),
     $c->req->param('password'),
     $c->req->address
   );
+  $txn->commit;
 
   if ($user && $user->{id}) {
     $c->req->env->{'psgix.session'}->{user_id} = $user->{id};
