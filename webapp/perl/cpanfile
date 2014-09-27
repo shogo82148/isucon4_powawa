@@ -6,6 +6,7 @@ requires "File::Temp";
 requires "Time::Piece";
 
 requires "DBD::mysql";
-requires "Starman";
+requires "Starlet";
 requires "Plack::Session";
 requires "Data::Dumper";
+requires "Plack::Middleware::AxsLog"
