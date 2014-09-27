@@ -85,3 +85,9 @@
 
     - name: ulimit
       copy: src=../limits.conf dest=/etc/security/limits.conf owner=root group=root mode=0644
+
+    - name: local port
+      copy: src=../sysctl.conf dest=/etc/sysctl.conf owner=root group=root mode=0644
+
+    - name: sysctl -p
+      command: sysctl -p
