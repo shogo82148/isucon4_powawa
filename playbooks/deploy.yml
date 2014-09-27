@@ -30,7 +30,7 @@
       supervisorctl: name=isucon_ruby state=stopped
 
     - name: restart isucon_perl
-      supervisorctl: name=isucon_perl state=started
+      supervisorctl: name=isucon_perl state=restarted
 
     - name: copy nginx.conf
       copy: src=../nginx.conf dest=/etc/nginx/nginx.conf owner=root group=root mode=0644
