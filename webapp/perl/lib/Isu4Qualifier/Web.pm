@@ -44,20 +44,14 @@ sub calculate_password_hash {
 
 sub user_locked {
   my ($self, $user) = @_;
-  my $log = $self->db->select_row(
-    'SELECT COUNT(1) AS failures FROM login_log WHERE user_id = ? AND id > IFNULL((select id from login_log where user_id = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-    $user->{'id'}, $user->{'id'});
-
-  $self->config->{user_lock_threshold} <= $log->{failures};
+  my $log = $self->db->select_row( 'SELECT fail_count failures FROM users WHERE id = ?', $user->{'id'} );
+  $self->config->{user_lock_threshold} <= ($log->{failures} // 0);
 };
 
 sub ip_banned {
   my ($self, $ip) = @_;
-  my $log = $self->db->select_row(
-    'SELECT COUNT(1) AS failures FROM login_log WHERE ip = ? AND id > IFNULL((select id from login_log where ip = ? AND succeeded = 1 ORDER BY id DESC LIMIT 1), 0)',
-    $ip, $ip);
-
-  $self->config->{ip_ban_threshold} <= $log->{failures};
+  my $log = $self->db->select_row( 'SELECT fail_count failures FROM ips WHERE ip = ?', $ip );
+  $self->config->{ip_ban_threshold} <= ($log->{failures} // 0);
 };
 
 sub attempt_login {
@@ -156,6 +150,14 @@ sub login_log {
     'INSERT INTO login_log (`created_at`, `user_id`, `login`, `ip`, `succeeded`) VALUES (NOW(),?,?,?,?)',
     $user_id, $login, $ip, ($succeeded ? 1 : 0)
   );
+  if ($succeeded) {
+      $self->db->query( 'update users set fail_count = 0 where id = ?', $user_id );
+      $self->db->query( 'insert into ips(ip, fail_count) values (?, 0) on duplicate key update fail_count = 0', $ip );
+  }
+  else {
+      $self->db->query( 'update users set fail_count = fail_count + 1 where id = ?', $user_id );
+      $self->db->query( 'insert into ips(ip, fail_count) values (?, 1) on duplicate key update fail_count = fail_count + 1', $ip );
+  }
 };
 
 sub set_flash {
