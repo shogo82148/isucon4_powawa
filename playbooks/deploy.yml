@@ -9,11 +9,17 @@
     - name: put files
       copy: src=../bench.sh dest=/home/isucon/
 
+    - name: put files
+      copy: src=../init.sh dest=/home/isucon/
+
     - name: change to owner
       file: path=/home/isucon/webapp owner=isucon group=isucon recurse=yes
 
     - name: change to owner
       file: path=/home/isucon/bench.sh owner=isucon group=isucon
+
+    - name: change to owner
+      file: path=/home/isucon/init.sh owner=isucon group=isucon
 
     - name: carton install
       command: /home/isucon/env.sh carton install
